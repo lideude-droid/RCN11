@@ -218,17 +218,20 @@
     if(match) document.getElementById('brandImg').src = match[1];
   }).catch(()=>{});
 
-  const clubs = [
-    'Vortex United','Pixel Rovers FC','Nexus Athletic','Cobalt City','Iron Forge SC',
-    'Hyperdrive FC','Granite Wanderers','Obsidian Rangers','Meridian United','Lumen FC',
-    'Aurora Town','Block City SC','Tempest SC','Sentinel FC','Quartz Rovers','Solis Calcio'
-  ];
   const clubSelect = document.getElementById('clubSelect');
-  clubs.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c; opt.textContent = c;
-    clubSelect.appendChild(opt);
-  });
+  fetch('/api/clubs')
+    .then(res => res.json())
+    .then(clubs => {
+      if(!Array.isArray(clubs)) return;
+      clubs
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name; opt.textContent = c.name;
+          clubSelect.appendChild(opt);
+        });
+    })
+    .catch(() => {});
 
   function timeAgo(dateStr){
     const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
