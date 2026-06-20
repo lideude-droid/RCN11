@@ -5,6 +5,8 @@ const path = require('path');
 
 const authRoutes = require('./routes/auth');
 const postsRoutes = require('./routes/posts');
+const publicRoutes = require('./routes/public');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,12 +14,14 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
-// ficheiros estáticos (login.html, dashboard.html, feed.html, etc.)
+// ficheiros estáticos (login.html, dashboard.html, feed.html, admin.html, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // API
 app.use('/api', authRoutes);
 app.use('/api', postsRoutes);
+app.use('/api', publicRoutes);
+app.use('/api', adminRoutes);
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
