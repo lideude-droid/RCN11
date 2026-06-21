@@ -47,12 +47,12 @@ router.get('/admin/clubs', async (req, res) => {
 
 // POST /api/admin/clubs -> cria um clube novo
 router.post('/admin/clubs', async (req, res) => {
-  const { name, city, manager } = req.body || {};
+  const { name, city, manager, assistant_manager } = req.body || {};
   if (!name) return res.status(400).json({ error: 'Falta o nome do clube.' });
 
   const { data, error } = await supabase
     .from('clubs')
-    .insert([{ name, city: city || '', manager: manager || '' }])
+    .insert([{ name, city: city || '', manager: manager || '', assistant_manager: assistant_manager || '' }])
     .select()
     .single();
 
@@ -63,7 +63,7 @@ router.post('/admin/clubs', async (req, res) => {
 // PATCH /api/admin/clubs/:id -> atualiza qualquer campo (nome, estatísticas, etc.)
 router.patch('/admin/clubs/:id', async (req, res) => {
   const { id } = req.params;
-  const allowed = ['name', 'city', 'manager', 'played', 'won', 'drawn', 'lost', 'goals_for', 'goals_against'];
+  const allowed = ['name', 'city', 'manager', 'assistant_manager', 'played', 'won', 'drawn', 'lost', 'goals_for', 'goals_against'];
   const updates = {};
   for (const k of allowed) {
     if (req.body[k] !== undefined) updates[k] = req.body[k];
