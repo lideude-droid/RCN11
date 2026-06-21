@@ -339,6 +339,7 @@
           <span>Treinador <b>${c.manager || '—'}</b></span>
           <span>Posição <b>${pos || '—'}º</b></span>
         </div>
+        ${c.assistant_manager ? `<div class="meta-row"><span>Adjunto <b>${c.assistant_manager}</b></span></div>` : ''}
       `;
       clubsGrid.appendChild(div);
     });

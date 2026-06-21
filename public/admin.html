@@ -128,12 +128,13 @@
           <input type="text" id="newClubName" placeholder="Nome do clube">
           <input type="text" id="newClubCity" placeholder="Cidade">
           <input type="text" id="newClubManager" placeholder="Treinador">
+          <input type="text" id="newClubAssistant" placeholder="Treinador adjunto (opcional)">
           <button id="addClubBtn">Adicionar clube</button>
         </div>
         <table>
           <thead>
             <tr>
-              <th>Clube</th><th>Cidade</th><th>Treinador</th>
+              <th>Clube</th><th>Cidade</th><th>Treinador</th><th>Adjunto</th>
               <th>J</th><th>V</th><th>E</th><th>D</th><th>GM</th><th>GS</th>
               <th></th>
             </tr>
@@ -273,6 +274,7 @@
         <td><input class="name-input" data-f="name" value="${c.name || ''}"></td>
         <td><input data-f="city" value="${c.city || ''}"></td>
         <td><input data-f="manager" value="${c.manager || ''}"></td>
+        <td><input data-f="assistant_manager" value="${c.assistant_manager || ''}" placeholder="—"></td>
         <td><input data-f="played" type="number" value="${c.played ?? 0}"></td>
         <td><input data-f="won" type="number" value="${c.won ?? 0}"></td>
         <td><input data-f="drawn" type="number" value="${c.drawn ?? 0}"></td>
@@ -312,12 +314,14 @@
     const name = document.getElementById('newClubName').value.trim();
     const city = document.getElementById('newClubCity').value.trim();
     const manager = document.getElementById('newClubManager').value.trim();
+    const assistant_manager = document.getElementById('newClubAssistant').value.trim();
     if(!name) return;
     try{
-      await adminFetch('/api/admin/clubs', { method:'POST', body: JSON.stringify({ name, city, manager }) });
+      await adminFetch('/api/admin/clubs', { method:'POST', body: JSON.stringify({ name, city, manager, assistant_manager }) });
       document.getElementById('newClubName').value = '';
       document.getElementById('newClubCity').value = '';
       document.getElementById('newClubManager').value = '';
+      document.getElementById('newClubAssistant').value = '';
       loadClubs();
     }catch(err){ document.getElementById('clubsStatus').textContent = err.message; }
   });
