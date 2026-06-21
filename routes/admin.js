@@ -2,9 +2,30 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../lib/supabase');
 
-const ADMIN_KEY = process.env.ADMIN_KEY || 'rcnprime123';
+// IMPORTANTE: tens de definir estas 3 variáveis no Render (Environment).
+// Não há valores por defeito no código de propósito — assim ninguém esquece de as configurar.
+const ADMIN_KEY = process.env.ADMIN_KEY;
+const ADMIN_USER = process.env.ADMIN_USER;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-// protege todas as rotas deste ficheiro: exige o cabeçalho x-admin-key
+if (!ADMIN_KEY || !ADMIN_USER || !ADMIN_PASSWORD) {
+  console.warn(
+    '[admin] ADMIN_KEY, ADMIN_USER ou ADMIN_PASSWORD em falta nas variáveis de ambiente. ' +
+    'A administração não vai funcionar até configurares isto no Render.'
+  );
+}
+
+// POST /api/admin/login -> valida utilizador/password no servidor (nunca no browser)
+// body: { username, password }
+router.post('/admin/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (username === ADMIN_USER && password === ADMIN_PASSWORD) {
+    return res.json({ key: ADMIN_KEY });
+  }
+  return res.status(401).json({ error: 'Utilizador ou palavra-passe incorretos.' });
+});
+
+// protege todas as rotas a seguir: exige o cabeçalho x-admin-key
 function requireAdmin(req, res, next) {
   const key = req.headers['x-admin-key'];
   if (!key || key !== ADMIN_KEY) {
