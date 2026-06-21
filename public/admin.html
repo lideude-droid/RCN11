@@ -165,9 +165,6 @@
   </div>
 
 <script>
-  const ADMIN_USER = 'RCN';
-  const ADMIN_PASS = 'rcnprime123';
-
   const gate = document.getElementById('gate');
   const panel = document.getElementById('panel');
   let adminKey = sessionStorage.getItem('rcn_admin_key');
@@ -179,19 +176,43 @@
     loadPlayers();
   }
 
-  if(adminKey === ADMIN_PASS){
+  function lock(message){
+    sessionStorage.removeItem('rcn_admin_key');
+    adminKey = null;
+    gate.style.display = 'flex';
+    panel.style.display = 'none';
+    if(message) document.getElementById('gateError').textContent = message;
+  }
+
+  // se já houver uma chave guardada desta sessão, tenta entrar diretamente
+  // (se entretanto tiver deixado de ser válida, o primeiro pedido à API falha e volta a pedir login)
+  if(adminKey){
     unlock();
   }
 
-  document.getElementById('gateBtn').addEventListener('click', () => {
-    const u = document.getElementById('adminUser').value.trim();
-    const p = document.getElementById('adminPass').value;
-    if(u === ADMIN_USER && p === ADMIN_PASS){
-      adminKey = p;
-      sessionStorage.setItem('rcn_admin_key', p);
+  document.getElementById('gateBtn').addEventListener('click', async () => {
+    const username = document.getElementById('adminUser').value.trim();
+    const password = document.getElementById('adminPass').value;
+    const errorEl = document.getElementById('gateError');
+    errorEl.textContent = '';
+
+    try{
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      if(!res.ok){
+        const body = await res.json().catch(() => ({}));
+        errorEl.textContent = body.error || 'Utilizador ou palavra-passe incorretos.';
+        return;
+      }
+      const data = await res.json();
+      adminKey = data.key;
+      sessionStorage.setItem('rcn_admin_key', adminKey);
       unlock();
-    } else {
-      document.getElementById('gateError').textContent = 'Utilizador ou palavra-passe incorretos.';
+    }catch(err){
+      errorEl.textContent = 'Não foi possível ligar ao servidor.';
     }
   });
 
@@ -220,6 +241,10 @@
         ...(options.headers || {})
       }
     });
+    if(res.status === 401){
+      lock('A sessão expirou. Inicia sessão outra vez.');
+      throw new Error('Sessão expirada.');
+    }
     if(!res.ok){
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || ('Erro ' + res.status));
