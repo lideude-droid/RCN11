@@ -1,4 +1,16 @@
+const fs = require('fs');
+
+// carrega o .env normal (se existir na raiz)
 require('dotenv').config();
+
+// em serviços Docker no Render, os "Secret Files" ficam garantidamente em /etc/secrets/<nome>.
+// se existir um .env ali, carrega-o também (sem substituir variáveis já definidas).
+const renderSecretEnv = '/etc/secrets/.env';
+if (fs.existsSync(renderSecretEnv)) {
+  require('dotenv').config({ path: renderSecretEnv, override: false });
+  console.log('[env] variáveis carregadas também de /etc/secrets/.env');
+}
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
