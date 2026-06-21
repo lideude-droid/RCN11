@@ -1,5 +1,5 @@
 # Imagem base leve com Node 20
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
