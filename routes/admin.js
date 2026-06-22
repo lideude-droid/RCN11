@@ -63,7 +63,7 @@ router.post('/admin/clubs', async (req, res) => {
 // PATCH /api/admin/clubs/:id -> atualiza qualquer campo (nome, estatísticas, etc.)
 router.patch('/admin/clubs/:id', async (req, res) => {
   const { id } = req.params;
-  const allowed = ['name', 'city', 'manager', 'assistant_manager', 'played', 'won', 'drawn', 'lost', 'goals_for', 'goals_against'];
+  const allowed = ['name', 'city', 'manager', 'assistant_manager', 'discord_role_id', 'budget', 'played', 'won', 'drawn', 'lost', 'goals_for', 'goals_against'];
   const updates = {};
   for (const k of allowed) {
     if (req.body[k] !== undefined) updates[k] = req.body[k];
@@ -129,6 +129,49 @@ router.delete('/admin/players/:id', async (req, res) => {
   const { error } = await supabase.from('players').delete().eq('id', id);
   if (error) return res.status(500).json({ error: 'Não foi possível remover o jogador.' });
   return res.status(204).send();
+});
+
+/* ---------------- MERCADO DE TRANSFERÊNCIAS ---------------- */
+
+// GET /api/admin/market -> estado atual
+router.get('/admin/market', async (req, res) => {
+  const { data } = await supabase.from('transfer_settings').select('*').eq('id', 1).single();
+  return res.json(data || { is_open: false });
+});
+
+// POST /api/admin/market -> abrir ou fechar
+// body: { action: 'open' | 'close' }
+router.post('/admin/market', async (req, res) => {
+  const { action } = req.body || {};
+  if (!['open', 'close'].includes(action))
+    return res.status(400).json({ error: 'action tem de ser "open" ou "close".' });
+
+  const isOpen = action === 'open';
+  const updates = {
+    is_open: isOpen,
+    ...(isOpen ? { opened_at: new Date().toISOString(), closed_at: null }
+               : { closed_at: new Date().toISOString() })
+  };
+
+  const { data, error } = await supabase
+    .from('transfer_settings').update(updates).eq('id', 1).select().single();
+
+  if (error) return res.status(500).json({ error: 'Não foi possível atualizar o mercado.' });
+  return res.json(data);
+});
+
+/* ------------ orçamento dos clubes (admin pode ajustar) ------------ */
+// PATCH /api/admin/clubs/:id/budget
+// body: { budget }
+router.patch('/admin/clubs/:id/budget', async (req, res) => {
+  const { id } = req.params;
+  const { budget } = req.body || {};
+  if (budget === undefined) return res.status(400).json({ error: 'Falta budget.' });
+
+  const { data, error } = await supabase
+    .from('clubs').update({ budget: Number(budget) }).eq('id', id).select().single();
+  if (error) return res.status(500).json({ error: 'Não foi possível atualizar o orçamento.' });
+  return res.json(data);
 });
 
 module.exports = router;
