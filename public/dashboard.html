@@ -163,6 +163,7 @@
     <a href="#marcadores">Marcadores</a>
     <a href="feed.html">Feed</a>
     <a href="admin.html">Admin</a>
+    <a href="club.html" id="clubLink" style="display:none;">Meu Clube</a>
   </nav>
   <div style="display:flex; align-items:center;">
     <div class="user-chip" id="userChip">
@@ -245,6 +246,8 @@
     document.getElementById('userAvatar').src = user.avatarUrl;
     document.getElementById('userName').textContent = user.username || 'Jogador RCN';
     document.getElementById('userId').textContent = 'ID: ' + user.id;
+    // mostrar "Meu Clube" apenas para donos
+    if(user.isOwner) document.getElementById('clubLink').style.display = '';
   }
   document.getElementById('logoutLink').addEventListener('click', (e) => {
     e.preventDefault();

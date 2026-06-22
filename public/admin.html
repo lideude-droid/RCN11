@@ -95,6 +95,24 @@
   .row-actions .del-btn:hover{ border-color:var(--red); color:var(--red); }
 
   .status-msg{ font-size:12px; color:var(--muted); margin-top:14px; min-height:16px; }
+
+  /* mercado */
+  .market-toggle{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel); border:1px solid var(--line); padding:22px 24px; max-width:480px;
+  }
+  .market-label{ font-family:'Oswald',sans-serif; font-size:17px; font-weight:600; }
+  .market-sub{ font-size:12px; color:var(--muted); margin-top:4px; }
+  .toggle-btn{
+    font-family:'Oswald',sans-serif; font-size:12.5px; font-weight:700; letter-spacing:1px;
+    text-transform:uppercase; padding:10px 22px; border:none; cursor:pointer; transition:.15s;
+  }
+  .toggle-btn.open{ background:var(--pitch-bright); color:#0c0f14; }
+  .toggle-btn.close{ background:var(--red); color:#fff; }
+  .toggle-btn:disabled{ opacity:.4; cursor:default; }
+
+  /* campo discord_role_id */
+  td input.role-input{ width:200px; }
 </style>
 </head>
 <body>
@@ -120,6 +138,7 @@
       <div class="tabs">
         <button class="tab-btn active" data-tab="clubs">Clubes &amp; Classificação</button>
         <button class="tab-btn" data-tab="players">Jogadores &amp; Estatísticas</button>
+        <button class="tab-btn" data-tab="market">Mercado</button>
       </div>
 
       <!-- ---------------- CLUBES ---------------- -->
@@ -134,7 +153,7 @@
         <table>
           <thead>
             <tr>
-              <th>Clube</th><th>Cidade</th><th>Treinador</th><th>Adjunto</th>
+              <th>Clube</th><th>Cidade</th><th>Treinador</th><th>Adjunto</th><th>Cargo Discord</th><th>Orçamento</th>
               <th>J</th><th>V</th><th>E</th><th>D</th><th>GM</th><th>GS</th>
               <th></th>
             </tr>
@@ -161,6 +180,18 @@
           <tbody id="playersBody"></tbody>
         </table>
         <div class="status-msg" id="playersStatus"></div>
+      </section>
+
+      <!-- ---------------- MERCADO ---------------- -->
+      <section class="tab-panel" id="tab-market">
+        <div class="market-toggle" id="marketToggle">
+          <div>
+            <div class="market-label" id="marketLabel">A carregar…</div>
+            <div class="market-sub" id="marketSub"></div>
+          </div>
+          <button class="toggle-btn" id="toggleMarketBtn" disabled>—</button>
+        </div>
+        <div class="status-msg" id="marketStatus"></div>
       </section>
     </main>
   </div>
@@ -275,6 +306,8 @@
         <td><input data-f="city" value="${c.city || ''}"></td>
         <td><input data-f="manager" value="${c.manager || ''}"></td>
         <td><input data-f="assistant_manager" value="${c.assistant_manager || ''}" placeholder="—"></td>
+        <td><input class="role-input" data-f="discord_role_id" value="${c.discord_role_id || ''}" placeholder="ID do cargo"></td>
+        <td><input data-f="budget" type="number" value="${c.budget ?? 30000}"></td>
         <td><input data-f="played" type="number" value="${c.played ?? 0}"></td>
         <td><input data-f="won" type="number" value="${c.won ?? 0}"></td>
         <td><input data-f="drawn" type="number" value="${c.drawn ?? 0}"></td>
@@ -406,6 +439,57 @@
       document.getElementById('newPlayerName').value = '';
       loadPlayers();
     }catch(err){ document.getElementById('playersStatus').textContent = err.message; }
+  });
+
+  /* ===================== MERCADO ===================== */
+  async function loadMarket(){
+    try{
+      const data = await adminFetch('/api/admin/market');
+      const label = document.getElementById('marketLabel');
+      const sub = document.getElementById('marketSub');
+      const btn = document.getElementById('toggleMarketBtn');
+
+      if(data.is_open){
+        label.textContent = '🟢 Mercado ABERTO';
+        sub.textContent = data.opened_at ? 'Aberto em: ' + new Date(data.opened_at).toLocaleString('pt') : '';
+        btn.textContent = 'Fechar Mercado';
+        btn.className = 'toggle-btn close';
+        btn.dataset.action = 'close';
+      } else {
+        label.textContent = '🔴 Mercado FECHADO';
+        sub.textContent = data.closed_at ? 'Fechado em: ' + new Date(data.closed_at).toLocaleString('pt') : 'Nunca aberto';
+        btn.textContent = 'Abrir Mercado';
+        btn.className = 'toggle-btn open';
+        btn.dataset.action = 'open';
+      }
+      btn.disabled = false;
+    }catch(err){
+      document.getElementById('marketStatus').textContent = err.message;
+    }
+  }
+
+  document.getElementById('toggleMarketBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('toggleMarketBtn');
+    const action = btn.dataset.action;
+    const label = action === 'open' ? 'Abrir' : 'Fechar';
+    if(!confirm(`Tens a certeza que queres ${label.toLowerCase()} o mercado de transferências?`)) return;
+    btn.disabled = true;
+    try{
+      await adminFetch('/api/admin/market', { method:'POST', body: JSON.stringify({ action }) });
+      document.getElementById('marketStatus').textContent = `Mercado ${action === 'open' ? 'aberto' : 'fechado'} com sucesso.`;
+      loadMarket();
+    }catch(err){
+      document.getElementById('marketStatus').textContent = err.message;
+      btn.disabled = false;
+    }
+  });
+
+  // carrega mercado quando muda para essa tab
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const orig = btn.onclick;
+    btn.addEventListener('click', () => {
+      if(btn.dataset.tab === 'market') loadMarket();
+    });
   });
 </script>
 
