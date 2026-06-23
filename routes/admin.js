@@ -17,7 +17,7 @@ if (!ADMIN_KEY || !ADMIN_USER || !ADMIN_PASSWORD) {
 
 // POST /api/admin/login -> valida utilizador/password no servidor (nunca no browser)
 // body: { username, password }
-router.post('/admin/login', (req, res) => {
+router.post('/login', (req, res) => {
   const { username, password } = req.body || {};
   if (username === ADMIN_USER && password === ADMIN_PASSWORD) {
     return res.json({ key: ADMIN_KEY });
@@ -39,14 +39,14 @@ router.use(requireAdmin);
 /* ---------------- CLUBES ---------------- */
 
 // GET /api/admin/clubs
-router.get('/admin/clubs', async (req, res) => {
+router.get('/clubs', async (req, res) => {
   const { data, error } = await supabase.from('clubs').select('*').order('name');
   if (error) return res.status(500).json({ error: 'Não foi possível carregar os clubes.' });
   return res.json(data);
 });
 
 // POST /api/admin/clubs -> cria um clube novo
-router.post('/admin/clubs', async (req, res) => {
+router.post('/clubs', async (req, res) => {
   const { name, city, manager, assistant_manager } = req.body || {};
   if (!name) return res.status(400).json({ error: 'Falta o nome do clube.' });
 
@@ -61,7 +61,7 @@ router.post('/admin/clubs', async (req, res) => {
 });
 
 // PATCH /api/admin/clubs/:id -> atualiza qualquer campo (nome, estatísticas, etc.)
-router.patch('/admin/clubs/:id', async (req, res) => {
+router.patch('/clubs/:id', async (req, res) => {
   const { id } = req.params;
   const allowed = ['name', 'city', 'manager', 'assistant_manager', 'discord_role_id', 'budget', 'played', 'won', 'drawn', 'lost', 'goals_for', 'goals_against'];
   const updates = {};
@@ -75,7 +75,7 @@ router.patch('/admin/clubs/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/clubs/:id
-router.delete('/admin/clubs/:id', async (req, res) => {
+router.delete('/clubs/:id', async (req, res) => {
   const { id } = req.params;
   const { error } = await supabase.from('clubs').delete().eq('id', id);
   if (error) return res.status(500).json({ error: 'Não foi possível remover o clube.' });
@@ -85,7 +85,7 @@ router.delete('/admin/clubs/:id', async (req, res) => {
 /* ---------------- JOGADORES ---------------- */
 
 // GET /api/admin/players
-router.get('/admin/players', async (req, res) => {
+router.get('/players', async (req, res) => {
   const { data, error } = await supabase
     .from('players')
     .select('*, clubs(name)')
@@ -95,7 +95,7 @@ router.get('/admin/players', async (req, res) => {
 });
 
 // POST /api/admin/players -> cria um jogador novo
-router.post('/admin/players', async (req, res) => {
+router.post('/players', async (req, res) => {
   const { name, club_id } = req.body || {};
   if (!name) return res.status(400).json({ error: 'Falta o nome do jogador.' });
 
@@ -110,7 +110,7 @@ router.post('/admin/players', async (req, res) => {
 });
 
 // PATCH /api/admin/players/:id -> atualiza golos, assistências, cartões, clube, nome
-router.patch('/admin/players/:id', async (req, res) => {
+router.patch('/players/:id', async (req, res) => {
   const { id } = req.params;
   const allowed = ['name', 'club_id', 'goals', 'assists', 'yellow_cards', 'red_cards'];
   const updates = {};
@@ -124,7 +124,7 @@ router.patch('/admin/players/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/players/:id
-router.delete('/admin/players/:id', async (req, res) => {
+router.delete('/players/:id', async (req, res) => {
   const { id } = req.params;
   const { error } = await supabase.from('players').delete().eq('id', id);
   if (error) return res.status(500).json({ error: 'Não foi possível remover o jogador.' });
@@ -134,14 +134,14 @@ router.delete('/admin/players/:id', async (req, res) => {
 /* ---------------- MERCADO DE TRANSFERÊNCIAS ---------------- */
 
 // GET /api/admin/market -> estado atual
-router.get('/admin/market', async (req, res) => {
+router.get('/market', async (req, res) => {
   const { data } = await supabase.from('transfer_settings').select('*').eq('id', 1).single();
   return res.json(data || { is_open: false });
 });
 
 // POST /api/admin/market -> abrir ou fechar
 // body: { action: 'open' | 'close' }
-router.post('/admin/market', async (req, res) => {
+router.post('/market', async (req, res) => {
   const { action } = req.body || {};
   if (!['open', 'close'].includes(action))
     return res.status(400).json({ error: 'action tem de ser "open" ou "close".' });
@@ -163,7 +163,7 @@ router.post('/admin/market', async (req, res) => {
 /* ------------ orçamento dos clubes (admin pode ajustar) ------------ */
 // PATCH /api/admin/clubs/:id/budget
 // body: { budget }
-router.patch('/admin/clubs/:id/budget', async (req, res) => {
+router.patch('/clubs/:id/budget', async (req, res) => {
   const { id } = req.params;
   const { budget } = req.body || {};
   if (budget === undefined) return res.status(400).json({ error: 'Falta budget.' });
