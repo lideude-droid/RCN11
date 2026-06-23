@@ -30,12 +30,14 @@ app.use(express.json({ limit: '2mb' }));
 // ficheiros estáticos (login.html, dashboard.html, feed.html, admin.html, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API
+// API pública e autenticada
 app.use('/api', authRoutes);
 app.use('/api', postsRoutes);
 app.use('/api', publicRoutes);
-app.use('/api', adminRoutes);
 app.use('/api', marketRoutes);
+
+// API de administração — montada em /api/admin para não interceptar outras rotas
+app.use('/api/admin', adminRoutes);
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
