@@ -151,6 +151,8 @@
     <a href="dashboard.html#clubes">Clubes</a>
     <a href="dashboard.html#marcadores">Marcadores</a>
     <a href="feed.html" class="active">Feed</a>
+    <a href="matches.html">Jogos</a>
+    <a href="profile.html" id="myAccountLink">A minha conta</a>
   </nav>
   <div style="display:flex; align-items:center;">
     <div class="user-chip">
@@ -177,13 +179,19 @@
       <img id="composerAvatar" src="" alt="">
       <span id="composerName">—</span>
     </div>
-    <input type="url" id="imageUrlInput" placeholder="Link da imagem (ex: Imgur) *" required>
+    <select id="mediaTypeSelect">
+      <option value="image">Imagem</option>
+      <option value="video">Vídeo</option>
+    </select>
+    <input type="url" id="imageUrlInput" placeholder="Link da imagem (ex: Imgur) *">
+    <div style="text-align:center; font-size:11px; color:var(--muted); margin:6px 0;">— ou —</div>
+    <input type="file" id="fileInput" accept="image/*,video/*" style="padding:8px 0; margin-bottom:10px;">
     <select id="clubSelect">
       <option value="">Sem clube associado</option>
     </select>
     <textarea id="captionInput" placeholder="Escreve uma legenda…"></textarea>
     <button class="submit-btn" id="publishBtn">Publicar</button>
-    <p class="hint">Usa um link direto de imagem (recomendamos Imgur). O post fica visível para toda a comunidade.</p>
+    <p class="hint">Usa um link direto (imagem ou vídeo) ou envia um ficheiro diretamente do teu PC — fica guardado para sempre na base de dados da RCN.</p>
   </div>
 
   <div id="feedList"></div>
@@ -209,6 +217,17 @@
     e.preventDefault();
     localStorage.removeItem('rcn_user');
     window.location.href = 'login.html';
+  });
+  if(user){
+    document.getElementById('myAccountLink').href = `profile.html?id=${encodeURIComponent(user.id)}`;
+  }
+
+  const mediaTypeSelect = document.getElementById('mediaTypeSelect');
+  const imageUrlInput = document.getElementById('imageUrlInput');
+  mediaTypeSelect.addEventListener('change', () => {
+    imageUrlInput.placeholder = mediaTypeSelect.value === 'video'
+      ? 'Link do vídeo (.mp4) *'
+      : 'Link da imagem (ex: Imgur) *';
   });
 
   // mesma logo do dashboard (definida ali via data-uri); aqui vamos buscar ao crest do dashboard se existir,
@@ -265,18 +284,27 @@
   function renderPost(p){
     const likes = Array.isArray(p.likes) ? p.likes : [];
     const liked = user && likes.includes(user.id);
+    const isOwner = user && p.author_id === user.id;
+    const profileHref = `profile.html?id=${encodeURIComponent(p.author_id)}`;
+    const mediaEl = p.media_type === 'video'
+      ? `<video class="pimg" src="${p.image_url}" controls playsinline></video>`
+      : `<img class="pimg" src="${p.image_url}" alt="Post">`;
     const el = document.createElement('div');
     el.className = 'post';
     el.innerHTML = `
       <div class="phead">
-        <img src="${p.author_avatar || ''}" alt="">
+        <a href="${profileHref}"><img src="${p.author_avatar || ''}" alt=""></a>
         <div class="who">
-          <div class="name">${p.author_username || 'Jogador RCN'}</div>
+          <a href="${profileHref}" class="name">${p.author_username || 'Jogador RCN'}${p.is_pinned ? ' 📌' : ''}</a>
           ${p.club ? `<div class="club">${p.club}</div>` : ''}
         </div>
         <div class="time">${timeAgo(p.created_at)}</div>
+        ${isOwner ? `
+          <button class="pin-btn" data-id="${p.id}" title="${p.is_pinned ? 'Desafixar' : 'Afixar no perfil'}" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;margin-left:8px;">${p.is_pinned ? '📌' : '📍'}</button>
+          <button class="delete-btn" data-id="${p.id}" title="Apagar post" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;margin-left:4px;">🗑️</button>
+        ` : ''}
       </div>
-      <img class="pimg" src="${p.image_url}" alt="Post">
+      ${mediaEl}
       <div class="pactions">
         <button class="like-btn ${liked ? 'liked' : ''}" data-id="${p.id}">
           ${heartIcon(liked)} <span class="like-count">${likes.length}</span>
@@ -311,6 +339,45 @@
         btn.disabled = false;
       }
     });
+
+    const pinBtn = el.querySelector('.pin-btn');
+    if(pinBtn){
+      pinBtn.addEventListener('click', async () => {
+        pinBtn.disabled = true;
+        try{
+          const res = await fetch(`/api/posts/${p.id}/pin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: user.id })
+          });
+          if(!res.ok) throw new Error('Falha ao afixar');
+          loadFeed();
+        }catch(err){
+          alert('Não foi possível afixar o post.');
+          pinBtn.disabled = false;
+        }
+      });
+    }
+
+    const deleteBtn = el.querySelector('.delete-btn');
+    if(deleteBtn){
+      deleteBtn.addEventListener('click', async () => {
+        if(!confirm('Tens a certeza que queres apagar este post?')) return;
+        deleteBtn.disabled = true;
+        try{
+          const res = await fetch(`/api/posts/${p.id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: user.id })
+          });
+          if(!res.ok) throw new Error('Falha ao apagar');
+          el.remove();
+        }catch(err){
+          alert('Não foi possível apagar o post.');
+          deleteBtn.disabled = false;
+        }
+      });
+    }
 
     const commentsSection = el.querySelector('.comments-section');
     const commentsList = el.querySelector('.comments-list');
@@ -383,17 +450,40 @@
     const imageUrl = document.getElementById('imageUrlInput').value.trim();
     const caption = document.getElementById('captionInput').value.trim();
     const club = clubSelect.value;
-    if(!imageUrl){ alert('Indica o link da imagem.'); return; }
+    let mediaType = mediaTypeSelect.value;
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+
+    if(!imageUrl && !file){ alert('Indica um link ou escolhe um ficheiro do teu PC.'); return; }
     if(!user){ window.location.href = 'login.html'; return; }
 
     const btn = document.getElementById('publishBtn');
-    btn.disabled = true; btn.textContent = 'A publicar…';
+    btn.disabled = true;
     try{
+      let mediaUrl = imageUrl;
+
+      if(file){
+        btn.textContent = 'A enviar ficheiro…';
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('author_id', user.id);
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+        if(!uploadRes.ok){
+          const body = await uploadRes.json().catch(() => ({}));
+          throw new Error(body.error || 'Falha no envio do ficheiro');
+        }
+        const uploadData = await uploadRes.json();
+        mediaUrl = uploadData.url;
+        mediaType = uploadData.media_type;
+      }
+
+      btn.textContent = 'A publicar…';
       const res = await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          image_url: imageUrl,
+          image_url: mediaUrl,
+          media_type: mediaType,
           caption,
           club,
           author_id: user.id,
@@ -404,10 +494,11 @@
       if(!res.ok) throw new Error('Falha ao publicar');
       document.getElementById('imageUrlInput').value = '';
       document.getElementById('captionInput').value = '';
+      fileInput.value = '';
       clubSelect.value = '';
       loadFeed();
     }catch(err){
-      alert('Não foi possível publicar o post.');
+      alert(err.message || 'Não foi possível publicar o post.');
     }finally{
       btn.disabled = false; btn.textContent = 'Publicar';
     }

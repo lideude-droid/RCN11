@@ -139,6 +139,7 @@
         <button class="tab-btn active" data-tab="clubs">Clubes &amp; Classificação</button>
         <button class="tab-btn" data-tab="players">Jogadores &amp; Estatísticas</button>
         <button class="tab-btn" data-tab="market">Mercado</button>
+        <button class="tab-btn" data-tab="matches">Jogos</button>
       </div>
 
       <!-- ---------------- CLUBES ---------------- -->
@@ -192,6 +193,29 @@
           <button class="toggle-btn" id="toggleMarketBtn" disabled>—</button>
         </div>
         <div class="status-msg" id="marketStatus"></div>
+      </section>
+
+      <!-- ---------------- JOGOS ---------------- -->
+      <section class="tab-panel" id="tab-matches">
+        <div class="toolbar">
+          <select id="newMatchHome"><option value="">Equipa da casa</option></select>
+          <span style="color:var(--muted); font-size:12px;">vs</span>
+          <select id="newMatchAway"><option value="">Equipa de fora</option></select>
+          <input type="number" id="newMatchDay" placeholder="Jornada" style="width:90px;">
+          <input type="datetime-local" id="newMatchDate">
+          <button id="addMatchBtn">Adicionar jogo</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Casa</th><th>Golos</th><th></th><th>Golos</th><th>Fora</th>
+              <th>Estado</th><th>Jornada</th><th>Data</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="matchesBody"></tbody>
+        </table>
+        <div class="status-msg" id="matchesStatus"></div>
       </section>
     </main>
   </div>
@@ -489,8 +513,126 @@
     const orig = btn.onclick;
     btn.addEventListener('click', () => {
       if(btn.dataset.tab === 'market') loadMarket();
+      if(btn.dataset.tab === 'matches') loadMatches();
     });
   });
+
+  /* ===================== JOGOS ===================== */
+  let matchesCache = [];
+
+  function matchClubOptions(selectedId){
+    let html = `<option value="">—</option>`;
+    clubsCache.forEach(c => {
+      html += `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${c.name}</option>`;
+    });
+    return html;
+  }
+
+  function fillMatchClubSelects(){
+    document.getElementById('newMatchHome').innerHTML = '<option value="">Equipa da casa</option>' +
+      clubsCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    document.getElementById('newMatchAway').innerHTML = '<option value="">Equipa de fora</option>' +
+      clubsCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+
+  async function loadMatches(){
+    const status = document.getElementById('matchesStatus');
+    try{
+      if(clubsCache.length === 0) await loadClubs();
+      fillMatchClubSelects();
+      matchesCache = await adminFetch('/api/admin/matches');
+      renderMatches();
+    }catch(err){ status.textContent = err.message; }
+  }
+
+  function clubName(id){
+    const c = clubsCache.find(c => c.id === id);
+    return c ? c.name : '—';
+  }
+
+  function renderMatches(){
+    const body = document.getElementById('matchesBody');
+    body.innerHTML = '';
+    matchesCache.forEach(m => {
+      const tr = document.createElement('tr');
+      const dateVal = m.played_at ? new Date(m.played_at).toISOString().slice(0, 16) : '';
+      tr.innerHTML = `
+        <td><select data-f="home_club_id">${matchClubOptions(m.home_club_id)}</select></td>
+        <td><input data-f="home_score" type="number" value="${m.home_score ?? ''}" style="width:48px;"></td>
+        <td style="color:var(--muted);">–</td>
+        <td><input data-f="away_score" type="number" value="${m.away_score ?? ''}" style="width:48px;"></td>
+        <td><select data-f="away_club_id">${matchClubOptions(m.away_club_id)}</select></td>
+        <td>
+          <select data-f="status">
+            <option value="scheduled" ${m.status === 'scheduled' ? 'selected' : ''}>Agendado</option>
+            <option value="played" ${m.status === 'played' ? 'selected' : ''}>Realizado</option>
+          </select>
+        </td>
+        <td><input data-f="matchday" type="number" value="${m.matchday ?? ''}" style="width:60px;"></td>
+        <td><input data-f="played_at" type="datetime-local" value="${dateVal}" style="width:170px;"></td>
+        <td class="row-actions">
+          <button class="save-btn">Guardar</button>
+          <button class="del-btn">Apagar</button>
+        </td>
+      `;
+      tr.querySelector('.save-btn').addEventListener('click', async () => {
+        const updates = {};
+        tr.querySelectorAll('[data-f]').forEach(inp => {
+          const f = inp.dataset.f;
+          if(f === 'home_score' || f === 'away_score'){
+            updates[f] = inp.value === '' ? null : Number(inp.value);
+          } else if(f === 'matchday'){
+            updates[f] = inp.value === '' ? null : Number(inp.value);
+          } else if(f === 'played_at'){
+            updates[f] = inp.value ? new Date(inp.value).toISOString() : null;
+          } else {
+            updates[f] = inp.value;
+          }
+        });
+        const status = document.getElementById('matchesStatus');
+        try{
+          await adminFetch(`/api/admin/matches/${m.id}`, { method:'PATCH', body: JSON.stringify(updates) });
+          status.textContent = 'Jogo atualizado. Classificação recalculada.';
+          loadMatches();
+          loadClubs();
+        }catch(err){ status.textContent = err.message; }
+      });
+      tr.querySelector('.del-btn').addEventListener('click', async () => {
+        if(!confirm(`Apagar o jogo ${clubName(m.home_club_id)} vs ${clubName(m.away_club_id)}?`)) return;
+        try{
+          await adminFetch(`/api/admin/matches/${m.id}`, { method:'DELETE' });
+          loadMatches();
+          loadClubs();
+        }catch(err){ document.getElementById('matchesStatus').textContent = err.message; }
+      });
+      body.appendChild(tr);
+    });
+  }
+
+  document.getElementById('addMatchBtn').addEventListener('click', async () => {
+    const home_club_id = document.getElementById('newMatchHome').value;
+    const away_club_id = document.getElementById('newMatchAway').value;
+    const matchday = document.getElementById('newMatchDay').value;
+    const dateInput = document.getElementById('newMatchDate').value;
+    const status = document.getElementById('matchesStatus');
+    if(!home_club_id || !away_club_id){ status.textContent = 'Escolhe as duas equipas.'; return; }
+    try{
+      await adminFetch('/api/admin/matches', {
+        method:'POST',
+        body: JSON.stringify({
+          home_club_id,
+          away_club_id,
+          matchday: matchday ? Number(matchday) : null,
+          played_at: dateInput ? new Date(dateInput).toISOString() : new Date().toISOString()
+        })
+      });
+      document.getElementById('newMatchDay').value = '';
+      document.getElementById('newMatchDate').value = '';
+      status.textContent = 'Jogo adicionado.';
+      loadMatches();
+    }catch(err){ status.textContent = err.message; }
+  });
+
 </script>
 
 </body>

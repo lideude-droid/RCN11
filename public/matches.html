@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RCN — Jogos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c0f14; --ink-2:#11151c; --panel:#141922;
+    --pitch-bright:#2f8c5e; --gold:#c9a04a; --red:#b7503b;
+    --line:rgba(255,255,255,.09); --text:#eceae2; --muted:#888e98;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{ font-family:'Inter',system-ui,sans-serif; background:var(--ink); color:var(--text); min-height:100vh; }
+  a{color:inherit;text-decoration:none;}
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 32px; height:64px; border-bottom:1px solid var(--line); background:var(--ink-2);
+    position:sticky; top:0; z-index:20;
+  }
+  .topbar .brand{ display:flex; align-items:center; gap:12px; }
+  .topbar .brand img{ width:30px; height:30px; object-fit:contain; }
+  .topbar .brand span{ font-family:'Oswald',sans-serif; font-size:16px; letter-spacing:2.5px; font-weight:600; }
+  .topbar nav{ display:flex; gap:6px; }
+  .topbar nav a{
+    font-family:'Oswald',sans-serif; font-size:12.5px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--muted); padding:10px 14px; border-bottom:2px solid transparent; transition:.15s;
+  }
+  .topbar nav a:hover{ color:var(--text); }
+  .topbar nav a.active{ color:var(--text); border-color:var(--gold); }
+  .user-chip{ display:flex; align-items:center; gap:10px; }
+  .user-chip img{ width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid var(--line); }
+  .user-chip .meta{ text-align:right; }
+  .user-chip .name{ font-size:12.5px; font-weight:600; }
+  .user-chip .id{ font-size:10.5px; color:var(--muted); }
+  .logout-link{ font-size:10.5px; color:var(--muted); border-bottom:1px solid var(--line); margin-left:14px; }
+  .logout-link:hover{ color:var(--red); border-color:var(--red); }
+  @media(max-width:880px){ .topbar nav{ display:none; } }
+
+  .hero{ padding:40px 32px 28px; border-bottom:1px solid var(--line); background:linear-gradient(180deg, rgba(29,92,65,.10), transparent 70%); }
+  .hero .kicker{ font-family:'Oswald',sans-serif; font-size:11.5px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .hero .kicker::before{ content:''; width:22px; height:1px; background:var(--gold); }
+  .hero h1{ font-family:'Oswald',sans-serif; font-size:28px; font-weight:600; }
+
+  main{ max-width:680px; margin:0 auto; padding:36px 20px 90px; }
+  .section-title{
+    font-family:'Oswald',sans-serif; font-size:12.5px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--gold); margin:28px 0 14px;
+  }
+  .match-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:var(--panel); border:1px solid var(--line); padding:16px 20px; margin-bottom:10px;
+  }
+  .match-row .team{ flex:1; font-size:13.5px; font-weight:600; }
+  .match-row .team.away{ text-align:right; }
+  .match-row .score{
+    font-family:'Oswald',sans-serif; font-size:18px; font-weight:700; letter-spacing:1px;
+    padding:0 18px; color:var(--gold); min-width:70px; text-align:center;
+  }
+  .match-row .vs{
+    font-family:'Oswald',sans-serif; font-size:13px; color:var(--muted); padding:0 18px; min-width:70px; text-align:center;
+  }
+  .match-meta{ font-size:10.5px; color:var(--muted); text-align:center; margin-top:2px; }
+  .match-col{ display:flex; flex-direction:column; align-items:center; }
+  .empty-state{ text-align:center; color:var(--muted); font-size:13px; padding:40px 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <a href="dashboard.html" style="display:flex; align-items:center; gap:12px;">
+      <img id="brandImg" src="" alt="RCN">
+      <span>RCN</span>
+    </a>
+  </div>
+  <nav>
+    <a href="dashboard.html#classificacao">Classificação</a>
+    <a href="dashboard.html#clubes">Clubes</a>
+    <a href="dashboard.html#marcadores">Marcadores</a>
+    <a href="matches.html" class="active">Jogos</a>
+    <a href="feed.html">Feed</a>
+    <a href="profile.html" id="myAccountLink">A minha conta</a>
+  </nav>
+  <div style="display:flex; align-items:center;">
+    <div class="user-chip">
+      <div class="meta">
+        <div class="name" id="userName">—</div>
+        <div class="id" id="userId">ID: —</div>
+      </div>
+      <img id="userAvatar" src="" alt="Avatar">
+    </div>
+    <a href="#" class="logout-link" id="logoutLink">Sair</a>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="kicker">Calendário RCN</div>
+  <h1>Jogos</h1>
+</div>
+
+<main>
+  <div class="section-title">Próximos jogos</div>
+  <div id="upcomingList"></div>
+  <div class="empty-state" id="upcomingEmpty" style="display:none;">Sem jogos agendados.</div>
+
+  <div class="section-title">Resultados</div>
+  <div id="playedList"></div>
+  <div class="empty-state" id="playedEmpty" style="display:none;">Ainda não há resultados.</div>
+</main>
+
+<script>
+  const savedUser = localStorage.getItem('rcn_user');
+  if(!savedUser){ window.location.href = 'login.html'; }
+  const user = savedUser ? JSON.parse(savedUser) : null;
+  if(user){
+    document.getElementById('userAvatar').src = user.avatarUrl;
+    document.getElementById('userName').textContent = user.username || 'Jogador RCN';
+    document.getElementById('userId').textContent = 'ID: ' + user.id;
+    document.getElementById('myAccountLink').href = `profile.html?id=${encodeURIComponent(user.id)}`;
+  }
+  document.getElementById('logoutLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    localStorage.removeItem('rcn_user');
+    window.location.href = 'login.html';
+  });
+
+  fetch('dashboard.html').then(r => r.text()).then(html => {
+    const match = html.match(/<img src="(data:image\/png;base64[^"]+)" alt="RCN">/);
+    if(match) document.getElementById('brandImg').src = match[1];
+  }).catch(()=>{});
+
+  function formatDate(dateStr){
+    if(!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('pt-PT', { day:'2-digit', month:'short' }) + ' · ' +
+      d.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function renderMatchRow(m){
+    const homeName = m.home_club ? m.home_club.name : '—';
+    const awayName = m.away_club ? m.away_club.name : '—';
+    const el = document.createElement('div');
+    el.className = 'match-row';
+    const middle = m.status === 'played'
+      ? `<div class="score">${m.home_score ?? 0} – ${m.away_score ?? 0}</div>`
+      : `<div class="match-col"><div class="vs">VS</div><div class="match-meta">${formatDate(m.played_at)}</div></div>`;
+    el.innerHTML = `
+      <div class="team">${homeName}</div>
+      ${middle}
+      <div class="team away">${awayName}</div>
+    `;
+    return el;
+  }
+
+  async function loadMatches(){
+    const upcomingList = document.getElementById('upcomingList');
+    const playedList = document.getElementById('playedList');
+    const upcomingEmpty = document.getElementById('upcomingEmpty');
+    const playedEmpty = document.getElementById('playedEmpty');
+    upcomingList.innerHTML = '';
+    playedList.innerHTML = '';
+    try{
+      const res = await fetch('/api/matches');
+      const matches = await res.json();
+      if(!Array.isArray(matches)) throw new Error('Resposta inválida');
+
+      const upcoming = matches.filter(m => m.status !== 'played')
+        .sort((a, b) => new Date(a.played_at) - new Date(b.played_at));
+      const played = matches.filter(m => m.status === 'played')
+        .sort((a, b) => new Date(b.played_at) - new Date(a.played_at));
+
+      upcomingEmpty.style.display = upcoming.length ? 'none' : 'block';
+      playedEmpty.style.display = played.length ? 'none' : 'block';
+      upcoming.forEach(m => upcomingList.appendChild(renderMatchRow(m)));
+      played.forEach(m => playedList.appendChild(renderMatchRow(m)));
+    }catch(err){
+      upcomingEmpty.style.display = 'block';
+      upcomingEmpty.textContent = 'Não foi possível carregar os jogos.';
+    }
+  }
+
+  loadMatches();
+</script>
+
+</body>
+</html>

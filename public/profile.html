@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RCN — Conta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c0f14;
+    --ink-2:#11151c;
+    --panel:#141922;
+    --pitch-bright:#2f8c5e;
+    --gold:#c9a04a;
+    --red:#b7503b;
+    --line:rgba(255,255,255,.09);
+    --text:#eceae2;
+    --muted:#888e98;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--ink); color:var(--text);
+    min-height:100vh;
+  }
+  a{color:inherit; text-decoration:none;}
+  ::selection{ background:var(--gold); color:#0c0f14; }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 32px; height:64px;
+    border-bottom:1px solid var(--line);
+    background:var(--ink-2);
+    position:sticky; top:0; z-index:20;
+  }
+  .topbar .brand{ display:flex; align-items:center; gap:12px; }
+  .topbar .brand img{ width:30px; height:30px; object-fit:contain; }
+  .topbar .brand span{ font-family:'Oswald',sans-serif; font-size:16px; letter-spacing:2.5px; font-weight:600; }
+  .topbar nav{ display:flex; gap:6px; }
+  .topbar nav a{
+    font-family:'Oswald',sans-serif; font-size:12.5px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--muted); padding:10px 14px; border-bottom:2px solid transparent; transition:.15s;
+  }
+  .topbar nav a:hover{ color:var(--text); }
+  .topbar nav a.active{ color:var(--text); border-color:var(--gold); }
+  .user-chip{ display:flex; align-items:center; gap:10px; }
+  .user-chip img{ width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid var(--line); }
+  .user-chip .meta{ text-align:right; }
+  .user-chip .name{ font-size:12.5px; font-weight:600; }
+  .user-chip .id{ font-size:10.5px; color:var(--muted); }
+  .logout-link{ font-size:10.5px; color:var(--muted); border-bottom:1px solid var(--line); margin-left:14px; }
+  .logout-link:hover{ color:var(--red); border-color:var(--red); }
+  @media(max-width:880px){ .topbar nav{ display:none; } }
+
+  main{ max-width:640px; margin:0 auto; padding:36px 20px 90px; }
+
+  .phead-card{
+    background:var(--panel); border:1px solid var(--line); padding:26px; margin-bottom:30px;
+    display:flex; gap:22px; align-items:center; flex-wrap:wrap;
+  }
+  .phead-card img.avatar{ width:84px; height:84px; border-radius:50%; object-fit:cover; border:1px solid var(--line); }
+  .phead-card .info{ flex:1; min-width:200px; }
+  .phead-card h1{ font-family:'Oswald',sans-serif; font-size:20px; font-weight:600; }
+  .phead-card .uid{ font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .stats{ display:flex; gap:22px; margin-top:14px; }
+  .stats div{ font-size:12.5px; color:var(--muted); }
+  .stats b{ color:var(--text); font-size:14px; display:block; }
+  .follow-btn{
+    background:var(--pitch-bright); border:none; color:#0c0f14; font-weight:700;
+    padding:10px 20px; font-family:'Oswald',sans-serif; letter-spacing:1px; text-transform:uppercase;
+    font-size:12px; cursor:pointer;
+  }
+  .follow-btn.following{ background:transparent; border:1px solid var(--line); color:var(--text); }
+  .follow-btn:hover{ opacity:.85; }
+
+  .section-title{
+    font-family:'Oswald',sans-serif; font-size:12.5px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--gold); margin-bottom:14px;
+  }
+
+  .post{ background:var(--panel); border:1px solid var(--line); margin-bottom:26px; }
+  .post .phead{ display:flex; align-items:center; gap:10px; padding:13px 16px; border-bottom:1px solid var(--line); }
+  .post .phead .name{ font-size:13px; font-weight:600; flex:1; }
+  .post .pimg{ width:100%; aspect-ratio:1/1; object-fit:cover; display:block; background:#0a0c10; }
+  .pcaption{ padding:10px 16px 16px; font-size:13px; line-height:1.5; }
+  .pin-tag{ font-size:10.5px; color:var(--gold); margin-left:6px; }
+  .post-actions{ display:flex; gap:10px; padding:10px 16px; }
+  .post-actions button{
+    background:none; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:0;
+  }
+  .post-actions button:hover{ color:var(--text); }
+  .empty-state{ text-align:center; color:var(--muted); font-size:13px; padding:60px 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <a href="dashboard.html" style="display:flex; align-items:center; gap:12px;">
+      <img id="brandImg" src="" alt="RCN">
+      <span>RCN</span>
+    </a>
+  </div>
+  <nav>
+    <a href="dashboard.html#classificacao">Classificação</a>
+    <a href="dashboard.html#clubes">Clubes</a>
+    <a href="dashboard.html#marcadores">Marcadores</a>
+    <a href="feed.html">Feed</a>
+    <a href="matches.html">Jogos</a>
+    <a href="profile.html" class="active" id="myAccountLink">A minha conta</a>
+  </nav>
+  <div style="display:flex; align-items:center;">
+    <div class="user-chip">
+      <div class="meta">
+        <div class="name" id="userName">—</div>
+        <div class="id" id="userId">ID: —</div>
+      </div>
+      <img id="userAvatar" src="" alt="Avatar">
+    </div>
+    <a href="#" class="logout-link" id="logoutLink">Sair</a>
+  </div>
+</div>
+
+<main>
+  <div class="phead-card" id="profileCard">
+    <img class="avatar" id="profileAvatar" src="" alt="">
+    <div class="info">
+      <h1 id="profileName">—</h1>
+      <div class="uid" id="profileId">ID: —</div>
+      <div class="stats">
+        <div><b id="postsCount">0</b>posts</div>
+        <div><b id="followersCount">0</b>seguidores</div>
+        <div><b id="followingCount">0</b>a seguir</div>
+      </div>
+    </div>
+    <button class="follow-btn" id="followBtn" style="display:none;">Seguir</button>
+  </div>
+
+  <div class="section-title">Posts</div>
+  <div id="postsList"></div>
+  <div class="empty-state" id="emptyState" style="display:none;">Ainda não há posts nesta conta.</div>
+</main>
+
+<script>
+  const savedUser = localStorage.getItem('rcn_user');
+  if(!savedUser){ window.location.href = 'login.html'; }
+  const user = savedUser ? JSON.parse(savedUser) : null;
+
+  const params = new URLSearchParams(window.location.search);
+  const profileId = params.get('id') || (user ? user.id : null);
+  if(!profileId){ window.location.href = 'login.html'; }
+
+  if(user){
+    document.getElementById('userAvatar').src = user.avatarUrl;
+    document.getElementById('userName').textContent = user.username || 'Jogador RCN';
+    document.getElementById('userId').textContent = 'ID: ' + user.id;
+    document.getElementById('myAccountLink').href = `profile.html?id=${encodeURIComponent(user.id)}`;
+  }
+  document.getElementById('logoutLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    localStorage.removeItem('rcn_user');
+    window.location.href = 'login.html';
+  });
+
+  fetch('dashboard.html').then(r => r.text()).then(html => {
+    const match = html.match(/<img src="(data:image\/png;base64[^"]+)" alt="RCN">/);
+    if(match) document.getElementById('brandImg').src = match[1];
+  }).catch(()=>{});
+
+  function timeAgo(dateStr){
+    const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+    if(diff < 60) return 'agora mesmo';
+    if(diff < 3600) return Math.floor(diff/60) + ' min';
+    if(diff < 86400) return Math.floor(diff/3600) + ' h';
+    return Math.floor(diff/86400) + ' d';
+  }
+
+  function avatarUrlFor(discordId, avatarHash){
+    return avatarHash
+      ? `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png?size=256`
+      : `https://cdn.discordapp.com/embed/avatars/${(BigInt(discordId) >> 22n) % 6n}.png`;
+  }
+
+  const isOwnProfile = user && profileId === user.id;
+  const followBtn = document.getElementById('followBtn');
+
+  async function loadProfile(){
+    try{
+      const res = await fetch(`/api/users/${encodeURIComponent(profileId)}`);
+      if(!res.ok){
+        document.getElementById('profileName').textContent = 'Conta não encontrada';
+        return;
+      }
+      const profile = await res.json();
+      const avatarUrl = avatarUrlFor(profile.discord_id, profile.avatar);
+      document.getElementById('profileAvatar').src = avatarUrl;
+      document.getElementById('profileName').textContent = profile.username || 'Jogador RCN';
+      document.getElementById('profileId').textContent = 'ID: ' + profile.discord_id;
+      document.getElementById('postsCount').textContent = profile.postsCount;
+      document.getElementById('followersCount').textContent = profile.followersCount;
+      document.getElementById('followingCount').textContent = profile.followingCount;
+
+      if(user && !isOwnProfile){
+        followBtn.style.display = 'inline-block';
+        const statusRes = await fetch(`/api/follow-status?follower_id=${encodeURIComponent(user.id)}&following_id=${encodeURIComponent(profileId)}`);
+        const status = await statusRes.json();
+        setFollowBtn(status.following);
+      }
+    }catch(err){
+      document.getElementById('profileName').textContent = 'Não foi possível carregar a conta';
+    }
+  }
+
+  function setFollowBtn(following){
+    followBtn.textContent = following ? 'A seguir' : 'Seguir';
+    followBtn.classList.toggle('following', following);
+    followBtn.dataset.following = following ? '1' : '0';
+  }
+
+  followBtn.addEventListener('click', async () => {
+    if(!user) return;
+    followBtn.disabled = true;
+    const currentlyFollowing = followBtn.dataset.following === '1';
+    try{
+      const res = await fetch(`/api/${currentlyFollowing ? 'unfollow' : 'follow'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ follower_id: user.id, following_id: profileId })
+      });
+      if(!res.ok) throw new Error('Falha');
+      setFollowBtn(!currentlyFollowing);
+      const followersCountEl = document.getElementById('followersCount');
+      followersCountEl.textContent = Math.max(0, parseInt(followersCountEl.textContent, 10) + (currentlyFollowing ? -1 : 1));
+    }catch(err){
+      alert('Não foi possível atualizar. Tenta novamente.');
+    }finally{
+      followBtn.disabled = false;
+    }
+  });
+
+  function renderPost(p){
+    const el = document.createElement('div');
+    el.className = 'post';
+    const mediaEl = p.media_type === 'video'
+      ? `<video class="pimg" src="${p.image_url}" controls playsinline></video>`
+      : `<img class="pimg" src="${p.image_url}" alt="Post">`;
+    el.innerHTML = `
+      <div class="phead">
+        <div class="name">${timeAgo(p.created_at)}${p.is_pinned ? '<span class="pin-tag">📌 Afixado</span>' : ''}</div>
+      </div>
+      ${mediaEl}
+      ${p.caption ? `<div class="pcaption">${p.caption}</div>` : ''}
+      ${isOwnProfile ? `
+        <div class="post-actions">
+          <button class="pin-toggle" data-id="${p.id}">${p.is_pinned ? 'Desafixar' : 'Afixar no perfil'}</button>
+          <button class="delete-toggle" data-id="${p.id}">Apagar</button>
+        </div>
+      ` : ''}
+    `;
+
+    const pinToggle = el.querySelector('.pin-toggle');
+    if(pinToggle){
+      pinToggle.addEventListener('click', async () => {
+        pinToggle.disabled = true;
+        try{
+          const res = await fetch(`/api/posts/${p.id}/pin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: user.id })
+          });
+          if(!res.ok) throw new Error('Falha');
+          loadPosts();
+        }catch(err){
+          alert('Não foi possível afixar o post.');
+          pinToggle.disabled = false;
+        }
+      });
+    }
+
+    const deleteToggle = el.querySelector('.delete-toggle');
+    if(deleteToggle){
+      deleteToggle.addEventListener('click', async () => {
+        if(!confirm('Tens a certeza que queres apagar este post?')) return;
+        deleteToggle.disabled = true;
+        try{
+          const res = await fetch(`/api/posts/${p.id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: user.id })
+          });
+          if(!res.ok) throw new Error('Falha');
+          el.remove();
+        }catch(err){
+          alert('Não foi possível apagar o post.');
+          deleteToggle.disabled = false;
+        }
+      });
+    }
+
+    return el;
+  }
+
+  async function loadPosts(){
+    const postsList = document.getElementById('postsList');
+    const emptyState = document.getElementById('emptyState');
+    postsList.innerHTML = '';
+    try{
+      const res = await fetch(`/api/posts?author_id=${encodeURIComponent(profileId)}`);
+      const posts = await res.json();
+      if(!Array.isArray(posts) || posts.length === 0){
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+      posts.forEach(p => postsList.appendChild(renderPost(p)));
+    }catch(err){
+      emptyState.style.display = 'block';
+      emptyState.textContent = 'Não foi possível carregar os posts.';
+    }
+  }
+
+  loadProfile();
+  loadPosts();
+</script>
+
+</body>
+</html>
