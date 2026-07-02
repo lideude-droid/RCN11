@@ -20,6 +20,8 @@ const postsRoutes = require('./routes/posts');
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
 const marketRoutes = require('./routes/market');
+const socialRoutes = require('./routes/social');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +37,8 @@ app.use('/api', authRoutes);
 app.use('/api', postsRoutes);
 app.use('/api', publicRoutes);
 app.use('/api', marketRoutes);
+app.use('/api', socialRoutes);
+app.use('/api', uploadRoutes);
 
 // API de administração — montada em /api/admin para não interceptar outras rotas
 app.use('/api/admin', adminRoutes);

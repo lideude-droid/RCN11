@@ -68,3 +68,24 @@ Com o `Dockerfile` agora na raiz, o build deve funcionar sem o erro anterior.
   ambiente do Render.
 - O `redirect_uri` no `login.html` é calculado automaticamente a partir do domínio
   onde a página está a correr, por isso não precisas de o editar manualmente lá.
+
+## Atualizações recentes
+
+Corre estes ficheiros SQL no Supabase (SQL Editor), por ordem, se ainda não o fizeste:
+- `supabase_setup_v5.sql` — vídeos nos posts, posts afixados (pin) e seguidores.
+- `supabase_setup_v6.sql` — jogos entre clubes (ex: SLB vs SCP) e o "bucket" de
+  armazenamento `post-media` onde ficam guardados os ficheiros enviados do PC.
+
+Novidades:
+- **Feed**: podes publicar imagens ou vídeos por link, ou enviar um ficheiro
+  diretamente do teu computador (fica guardado para sempre no armazenamento do
+  Supabase, não desaparece). Também dá para apagar os teus posts e afixar
+  (pin) um post no topo do teu perfil.
+- **Contas (`profile.html`)**: página de perfil de cada jogador, com os posts
+  dele, contadores de seguidores e um botão para seguir/deixar de seguir.
+- **Jogos (`matches.html`)**: calendário público com próximos jogos e
+  resultados. No painel de administração (`admin.html`, separador "Jogos")
+  dá para criar jogos entre clubes (ex: SLB vs SCP), marcar o resultado e a
+  classificação dos clubes é recalculada automaticamente.
+- Instala as novas dependências antes de correr localmente: `npm install`
+  (adiciona o pacote `multer`, usado para os uploads de ficheiros).
