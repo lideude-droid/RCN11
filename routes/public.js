@@ -21,6 +21,16 @@ router.get('/players', async (req, res) => {
   return res.json(data);
 });
 
+// GET /api/matches -> lista de jogos (agendados e realizados), com o nome dos clubes
+router.get('/matches', async (req, res) => {
+  const { data, error } = await supabase
+    .from('matches')
+    .select('*, home_club:home_club_id(name), away_club:away_club_id(name)')
+    .order('played_at', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Não foi possível carregar os jogos.' });
+  return res.json(data);
+});
+
 /* ---------------- comentários ---------------- */
 
 // GET /api/posts/:id/comments
