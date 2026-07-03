@@ -49,7 +49,18 @@ router.get('/matches/:id', async (req, res) => {
     .eq('match_id', id)
     .order('minute', { ascending: true, nullsFirst: true });
 
-  return res.json({ ...match, events: events || [] });
+  // agrupa as assistências logo a seguir ao golo a que pertencem
+  const goalsAndOthers = (events || []).filter((e) => e.event_type !== 'assist');
+  const assists = (events || []).filter((e) => e.event_type === 'assist');
+  const orderedEvents = [];
+  goalsAndOthers.forEach((ev) => {
+    orderedEvents.push(ev);
+    assists.filter((a) => a.parent_event_id === ev.id).forEach((a) => orderedEvents.push(a));
+  });
+  // assistências órfãs (sem golo associado, não deveria acontecer) vão no fim
+  assists.filter((a) => !goalsAndOthers.some((ev) => ev.id === a.parent_event_id)).forEach((a) => orderedEvents.push(a));
+
+  return res.json({ ...match, events: orderedEvents });
 });
 
 /* ---------------- comentários ---------------- */
@@ -90,6 +101,12 @@ router.post('/posts/:id/comments', async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: 'Não foi possível publicar o comentário.' });
+
+  const { data: post } = await supabase.from('posts').select('comments_count').eq('id', id).single();
+  if (post) {
+    await supabase.from('posts').update({ comments_count: (post.comments_count || 0) + 1 }).eq('id', id);
+  }
+
   return res.status(201).json(data);
 });
 
@@ -100,7 +117,7 @@ router.delete('/comments/:id', async (req, res) => {
 
   const { data: comment, error: fetchError } = await supabase
     .from('comments')
-    .select('author_id')
+    .select('author_id, post_id')
     .eq('id', id)
     .single();
 
@@ -109,6 +126,12 @@ router.delete('/comments/:id', async (req, res) => {
 
   const { error } = await supabase.from('comments').delete().eq('id', id);
   if (error) return res.status(500).json({ error: 'Não foi possível apagar o comentário.' });
+
+  const { data: post } = await supabase.from('posts').select('id, comments_count').eq('id', comment.post_id).maybeSingle();
+  if (post) {
+    await supabase.from('posts').update({ comments_count: Math.max(0, (post.comments_count || 0) - 1) }).eq('id', post.id);
+  }
+
   return res.status(204).send();
 });
 

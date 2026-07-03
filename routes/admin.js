@@ -291,20 +291,47 @@ router.get('/matches/:id/events', async (req, res) => {
     .eq('match_id', id)
     .order('minute', { ascending: true, nullsFirst: true });
   if (error) return res.status(500).json({ error: 'Não foi possível carregar os acontecimentos.' });
-  return res.json(data);
+
+  const goalsAndOthers = (data || []).filter((e) => e.event_type !== 'assist');
+  const assists = (data || []).filter((e) => e.event_type === 'assist');
+  const ordered = [];
+  goalsAndOthers.forEach((ev) => {
+    ordered.push(ev);
+    assists.filter((a) => a.parent_event_id === ev.id).forEach((a) => ordered.push(a));
+  });
+  assists.filter((a) => !goalsAndOthers.some((ev) => ev.id === a.parent_event_id)).forEach((a) => ordered.push(a));
+
+  return res.json(ordered);
 });
 
 // POST /api/admin/matches/:id/events -> adiciona um acontecimento (golo, cartão, etc.)
-// body: { club_id, player_id, player_name, event_type, minute, note }
+// body: { club_id, player_id, player_name, event_type, minute, note, parent_event_id }
+// nota: uma assistência (event_type = "assist") tem de estar ligada a um golo (parent_event_id)
 router.post('/matches/:id/events', async (req, res) => {
   const { id } = req.params;
-  const { club_id, player_id, player_name, event_type, minute, note } = req.body || {};
+  const { club_id, player_id, player_name, event_type, minute, note, parent_event_id } = req.body || {};
 
   if (!club_id) {
     return res.status(400).json({ error: 'Falta escolher o clube.' });
   }
   const allowedTypes = ['goal', 'own_goal', 'assist', 'yellow', 'red'];
   const safeType = allowedTypes.includes(event_type) ? event_type : 'goal';
+
+  let safeParentId = null;
+  if (safeType === 'assist') {
+    if (!parent_event_id) {
+      return res.status(400).json({ error: 'Uma assistência tem de estar ligada a um golo.' });
+    }
+    const { data: goalEvent } = await supabase
+      .from('match_events')
+      .select('id, event_type, match_id')
+      .eq('id', parent_event_id)
+      .single();
+    if (!goalEvent || goalEvent.match_id !== id || goalEvent.event_type !== 'goal') {
+      return res.status(400).json({ error: 'O golo escolhido para a assistência não é válido.' });
+    }
+    safeParentId = parent_event_id;
+  }
 
   const { data, error } = await supabase
     .from('match_events')
@@ -315,7 +342,8 @@ router.post('/matches/:id/events', async (req, res) => {
       player_name: player_name || null,
       event_type: safeType,
       minute: minute === undefined || minute === '' ? null : Number(minute),
-      note: note || null
+      note: note || null,
+      parent_event_id: safeParentId
     }])
     .select()
     .single();

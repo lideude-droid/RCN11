@@ -2,29 +2,76 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../lib/supabase');
 
-// GET /api/posts -> lista os posts do feed, mais recentes primeiro
-// query opcional: ?author_id=<id> -> só os posts desse utilizador (para a página de conta),
-// aparecendo primeiro o post afixado (is_pinned)
+// GET /api/posts -> lista os posts
+// - com ?author_id=<id> (página de conta): mais recentes primeiro, com o post
+//   afixado (is_pinned) sempre no topo — o afixar só tem efeito aqui, não no feed
+// - sem author_id (feed principal): NÃO é por data. A ordem é semi-aleatória,
+//   dando mais probabilidade de aparecer primeiro a posts com mais visualizações,
+//   gostos e comentários (mistura popularidade com aleatoriedade)
 router.get('/posts', async (req, res) => {
   const { author_id } = req.query || {};
 
-  let query = supabase
-    .from('posts')
-    .select('*')
-    .order('is_pinned', { ascending: false })
-    .order('created_at', { ascending: false });
-
   if (author_id) {
-    query = query.eq('author_id', author_id);
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('author_id', author_id)
+      .order('is_pinned', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[posts] erro a ler posts do perfil:', error);
+      return res.status(500).json({ error: 'Não foi possível carregar os posts.' });
+    }
+    return res.json(data);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await supabase.from('posts').select('*');
 
   if (error) {
     console.error('[posts] erro a ler posts:', error);
     return res.status(500).json({ error: 'Não foi possível carregar o feed.' });
   }
-  return res.json(data);
+
+  const ranked = (data || [])
+    .map((post) => {
+      const likes = Array.isArray(post.likes) ? post.likes.length : 0;
+      const comments = post.comments_count || 0;
+      const views = post.views || 0;
+      // pontuação de popularidade (gostos e comentários pesam mais que views)
+      const popularity = likes * 5 + comments * 4 + views * 1 + 1;
+      // baralha com um fator aleatório, mas posts populares tendem a ficar mais acima
+      return { post, sortKey: Math.random() * popularity };
+    })
+    .sort((a, b) => b.sortKey - a.sortKey)
+    .map((r) => r.post);
+
+  return res.json(ranked);
+});
+
+// POST /api/posts/:id/view -> regista uma visualização do post (chamado quando aparece no feed)
+router.post('/posts/:id/view', async (req, res) => {
+  const { id } = req.params;
+
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('views')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !post) {
+    return res.status(404).json({ error: 'Post não encontrado.' });
+  }
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ views: (post.views || 0) + 1 })
+    .eq('id', id);
+
+  if (error) {
+    return res.status(500).json({ error: 'Não foi possível registar a visualização.' });
+  }
+  return res.status(204).send();
 });
 
 // POST /api/posts -> cria um novo post
