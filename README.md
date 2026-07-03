@@ -89,3 +89,7 @@ Novidades:
   classificação dos clubes é recalculada automaticamente.
 - Instala as novas dependências antes de correr localmente: `npm install`
   (adiciona o pacote `multer`, usado para os uploads de ficheiros).
+- `supabase_setup_v8.sql` — o feed passa a ser ordenado por popularidade
+  (visualizações, gostos e comentários) com um fator aleatório, em vez de por
+  data; o "afixar" só tem efeito na página de conta do jogador; e as
+  assistências ficam ligadas ao golo respetivo nos acontecimentos do jogo.
