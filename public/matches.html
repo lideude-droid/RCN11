@@ -38,6 +38,23 @@
   .user-chip .id{ font-size:10.5px; color:var(--muted); }
   .logout-link{ font-size:10.5px; color:var(--muted); border-bottom:1px solid var(--line); margin-left:14px; }
   .logout-link:hover{ color:var(--red); border-color:var(--red); }
+
+  .social-menu{ position:relative; margin-left:14px; }
+  .social-toggle{
+    background:none; border:1px solid var(--line); color:var(--muted);
+    font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;
+  }
+  .social-toggle:hover{ color:var(--text); border-color:var(--gold); }
+  .social-dropdown{
+    position:absolute; top:calc(100% + 8px); right:0; background:var(--ink-2);
+    border:1px solid var(--line); min-width:170px; display:none; flex-direction:column; z-index:30;
+    box-shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+  .social-dropdown.open{ display:flex; }
+  .social-dropdown a{ padding:11px 14px; font-size:12.5px; color:var(--text); border-bottom:1px solid var(--line); }
+  .social-dropdown a:last-child{ border-bottom:none; }
+  .social-dropdown a:hover{ background:rgba(255,255,255,.06); color:var(--gold); }
   @media(max-width:880px){ .topbar nav{ display:none; } }
 
   .hero{ padding:40px 32px 28px; border-bottom:1px solid var(--line); background:linear-gradient(180deg, rgba(29,92,65,.10), transparent 70%); }
@@ -66,6 +83,32 @@
   .match-meta{ font-size:10.5px; color:var(--muted); text-align:center; margin-top:2px; }
   .match-col{ display:flex; flex-direction:column; align-items:center; }
   .empty-state{ text-align:center; color:var(--muted); font-size:13px; padding:40px 0; }
+  .match-row{ cursor:pointer; transition:.15s; }
+  .match-row:hover{ border-color:var(--gold); }
+
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.65);
+    align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal-box{
+    background:var(--panel); border:1px solid var(--line); max-width:460px; width:100%;
+    max-height:82vh; overflow-y:auto; padding:26px;
+  }
+  .modal-box .modal-close{
+    float:right; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; line-height:1;
+  }
+  .modal-box .modal-close:hover{ color:var(--text); }
+  .modal-title{ display:flex; align-items:center; justify-content:center; gap:16px; margin:6px 0 6px; }
+  .modal-title .team{ font-family:'Oswald',sans-serif; font-size:15px; font-weight:600; text-align:center; flex:1; }
+  .modal-title .score{ font-family:'Oswald',sans-serif; font-size:24px; font-weight:700; color:var(--gold); }
+  .modal-sub{ text-align:center; font-size:11px; color:var(--muted); margin-bottom:20px; }
+  .event-line{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; }
+  .event-line:last-child{ border-bottom:none; }
+  .event-line .min{ min-width:34px; color:var(--gold); font-family:'Oswald',sans-serif; font-size:12px; }
+  .event-line .icon{ min-width:20px; text-align:center; }
+  .event-line .who{ flex:1; }
+  .event-line .side{ font-size:10.5px; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -82,8 +125,6 @@
     <a href="dashboard.html#clubes">Clubes</a>
     <a href="dashboard.html#marcadores">Marcadores</a>
     <a href="matches.html" class="active">Jogos</a>
-    <a href="feed.html">Feed</a>
-    <a href="profile.html" id="myAccountLink">A minha conta</a>
   </nav>
   <div style="display:flex; align-items:center;">
     <div class="user-chip">
@@ -92,6 +133,13 @@
         <div class="id" id="userId">ID: —</div>
       </div>
       <img id="userAvatar" src="" alt="Avatar">
+    </div>
+    <div class="social-menu">
+      <button class="social-toggle" id="socialToggle" type="button">Comunidade ▾</button>
+      <div class="social-dropdown" id="socialDropdown">
+        <a href="feed.html">Feed</a>
+        <a href="profile.html" id="myAccountLink">A minha conta</a>
+      </div>
     </div>
     <a href="#" class="logout-link" id="logoutLink">Sair</a>
   </div>
@@ -112,6 +160,13 @@
   <div class="empty-state" id="playedEmpty" style="display:none;">Ainda não há resultados.</div>
 </main>
 
+<div class="modal-overlay" id="matchModal">
+  <div class="modal-box">
+    <button class="modal-close" id="matchModalClose">✕</button>
+    <div id="matchModalContent">A carregar…</div>
+  </div>
+</div>
+
 <script>
   const savedUser = localStorage.getItem('rcn_user');
   if(!savedUser){ window.location.href = 'login.html'; }
@@ -127,6 +182,15 @@
     localStorage.removeItem('rcn_user');
     window.location.href = 'login.html';
   });
+  const socialToggle = document.getElementById('socialToggle');
+  const socialDropdown = document.getElementById('socialDropdown');
+  if(socialToggle){
+    socialToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      socialDropdown.classList.toggle('open');
+    });
+    document.addEventListener('click', () => socialDropdown.classList.remove('open'));
+  }
 
   fetch('dashboard.html').then(r => r.text()).then(html => {
     const match = html.match(/<img src="(data:image\/png;base64[^"]+)" alt="RCN">/);
@@ -153,8 +217,57 @@
       ${middle}
       <div class="team away">${awayName}</div>
     `;
+    el.addEventListener('click', () => openMatchModal(m.id));
     return el;
   }
+
+  const eventIcons = { goal: '⚽', own_goal: '⚽', assist: '🎯', yellow: '🟨', red: '🟥' };
+  const eventLabels = { goal: 'Golo', own_goal: 'Autogolo', assist: 'Assistência', yellow: 'Cartão amarelo', red: 'Cartão vermelho' };
+
+  const matchModal = document.getElementById('matchModal');
+  const matchModalContent = document.getElementById('matchModalContent');
+
+  async function openMatchModal(id){
+    matchModal.classList.add('open');
+    matchModalContent.innerHTML = '<p style="text-align:center; color:var(--muted); font-size:13px;">A carregar…</p>';
+    try{
+      const res = await fetch(`/api/matches/${id}`);
+      if(!res.ok) throw new Error('Jogo não encontrado');
+      const m = await res.json();
+      const homeName = m.home_club ? m.home_club.name : '—';
+      const awayName = m.away_club ? m.away_club.name : '—';
+
+      const scoreHtml = m.status === 'played'
+        ? `<span class="score">${m.home_score ?? 0} – ${m.away_score ?? 0}</span>`
+        : `<span class="score" style="color:var(--muted); font-size:15px;">VS</span>`;
+
+      const events = (m.events || []).slice().sort((a, b) => (a.minute ?? 999) - (b.minute ?? 999));
+      const eventsHtml = events.length
+        ? events.map(ev => `
+            <div class="event-line">
+              <span class="min">${ev.minute != null ? ev.minute + "'" : '—'}</span>
+              <span class="icon">${eventIcons[ev.event_type] || '•'}</span>
+              <span class="who">${ev.player_name || (ev.player ? ev.player.name : 'Jogador')} <span class="side">— ${ev.club ? ev.club.name : ''} · ${eventLabels[ev.event_type] || ev.event_type}</span></span>
+            </div>
+          `).join('')
+        : `<p style="text-align:center; color:var(--muted); font-size:12.5px; padding:14px 0;">${m.status === 'played' ? 'Sem acontecimentos registados.' : 'Este jogo ainda não foi realizado.'}</p>`;
+
+      matchModalContent.innerHTML = `
+        <div class="modal-title">
+          <div class="team">${homeName}</div>
+          ${scoreHtml}
+          <div class="team">${awayName}</div>
+        </div>
+        <div class="modal-sub">${m.status === 'played' ? 'Realizado' : 'Agendado'} · ${formatDate(m.played_at)}${m.matchday ? ' · Jornada ' + m.matchday : ''}</div>
+        ${eventsHtml}
+      `;
+    }catch(err){
+      matchModalContent.innerHTML = `<p style="text-align:center; color:var(--red); font-size:13px;">Não foi possível carregar o jogo.</p>`;
+    }
+  }
+
+  document.getElementById('matchModalClose').addEventListener('click', () => matchModal.classList.remove('open'));
+  matchModal.addEventListener('click', (e) => { if(e.target === matchModal) matchModal.classList.remove('open'); });
 
   async function loadMatches(){
     const upcomingList = document.getElementById('upcomingList');

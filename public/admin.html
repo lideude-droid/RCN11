@@ -210,7 +210,7 @@
             <tr>
               <th>Casa</th><th>Golos</th><th></th><th>Golos</th><th>Fora</th>
               <th>Estado</th><th>Jornada</th><th>Data</th>
-              <th></th>
+              <th></th><th></th>
             </tr>
           </thead>
           <tbody id="matchesBody"></tbody>
@@ -574,6 +574,7 @@
           <button class="save-btn">Guardar</button>
           <button class="del-btn">Apagar</button>
         </td>
+        <td><button class="events-btn">Eventos</button></td>
       `;
       tr.querySelector('.save-btn').addEventListener('click', async () => {
         const updates = {};
@@ -606,6 +607,101 @@
         }catch(err){ document.getElementById('matchesStatus').textContent = err.message; }
       });
       body.appendChild(tr);
+
+      const eventsRow = document.createElement('tr');
+      eventsRow.style.display = 'none';
+      eventsRow.innerHTML = `<td colspan="10" style="background:rgba(255,255,255,.03);"><div class="events-panel"></div></td>`;
+      body.appendChild(eventsRow);
+      const eventsPanel = eventsRow.querySelector('.events-panel');
+
+      tr.querySelector('.events-btn').addEventListener('click', async () => {
+        const showing = eventsRow.style.display !== 'none';
+        eventsRow.style.display = showing ? 'none' : 'table-row';
+        if(!showing) await renderMatchEvents(m, eventsPanel);
+      });
+    });
+  }
+
+  function playerOptionsForClub(clubId){
+    const players = playersCache.filter(p => p.club_id === clubId);
+    return players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  }
+
+  const eventTypeLabels = { goal: 'Golo', own_goal: 'Autogolo', assist: 'Assistência', yellow: 'Cartão amarelo', red: 'Cartão vermelho' };
+
+  async function renderMatchEvents(m, panel){
+    panel.innerHTML = '<p style="color:var(--muted); font-size:12px;">A carregar…</p>';
+    if(playersCache.length === 0) await loadPlayers();
+    let events;
+    try{
+      events = await adminFetch(`/api/admin/matches/${m.id}/events`);
+    }catch(err){
+      panel.innerHTML = `<p style="color:var(--red); font-size:12px;">${err.message}</p>`;
+      return;
+    }
+
+    const list = events.map(ev => `
+      <div style="display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--line); font-size:12.5px;">
+        <span style="min-width:36px; color:var(--muted);">${ev.minute != null ? ev.minute + "'" : '—'}</span>
+        <span style="min-width:130px;">${eventTypeLabels[ev.event_type] || ev.event_type}</span>
+        <span style="flex:1;">${ev.player_name || '—'} <span style="color:var(--muted);">(${clubName(ev.club_id)})</span></span>
+        <button class="del-event-btn" data-id="${ev.id}" style="background:none;border:none;color:var(--muted);cursor:pointer;">Apagar</button>
+      </div>
+    `).join('') || '<p style="color:var(--muted); font-size:12px;">Sem acontecimentos registados.</p>';
+
+    panel.innerHTML = `
+      ${list}
+      <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; align-items:center;">
+        <select class="ev-club">
+          <option value="${m.home_club_id}">${clubName(m.home_club_id)}</option>
+          <option value="${m.away_club_id}">${clubName(m.away_club_id)}</option>
+        </select>
+        <select class="ev-player"><option value="">Jogador (opcional)</option></select>
+        <input class="ev-player-name" type="text" placeholder="Nome (se não estiver na lista)" style="width:170px;">
+        <select class="ev-type">
+          <option value="goal">Golo</option>
+          <option value="own_goal">Autogolo</option>
+          <option value="assist">Assistência</option>
+          <option value="yellow">Cartão amarelo</option>
+          <option value="red">Cartão vermelho</option>
+        </select>
+        <input class="ev-minute" type="number" placeholder="Min." style="width:60px;">
+        <button class="add-event-btn">Adicionar</button>
+      </div>
+    `;
+
+    const clubSelect = panel.querySelector('.ev-club');
+    const playerSelect = panel.querySelector('.ev-player');
+    const fillPlayers = () => { playerSelect.innerHTML = '<option value="">Jogador (opcional)</option>' + playerOptionsForClub(clubSelect.value); };
+    fillPlayers();
+    clubSelect.addEventListener('change', fillPlayers);
+
+    panel.querySelectorAll('.del-event-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try{
+          await adminFetch(`/api/admin/match-events/${btn.dataset.id}`, { method:'DELETE' });
+          renderMatchEvents(m, panel);
+        }catch(err){ alert(err.message); }
+      });
+    });
+
+    panel.querySelector('.add-event-btn').addEventListener('click', async () => {
+      const playerId = playerSelect.value;
+      const playerObj = playersCache.find(p => p.id === playerId);
+      const manualName = panel.querySelector('.ev-player-name').value.trim();
+      try{
+        await adminFetch(`/api/admin/matches/${m.id}/events`, {
+          method: 'POST',
+          body: JSON.stringify({
+            club_id: clubSelect.value,
+            player_id: playerId || null,
+            player_name: manualName || (playerObj ? playerObj.name : null),
+            event_type: panel.querySelector('.ev-type').value,
+            minute: panel.querySelector('.ev-minute').value
+          })
+        });
+        renderMatchEvents(m, panel);
+      }catch(err){ alert(err.message); }
     });
   }
 
