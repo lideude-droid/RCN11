@@ -326,12 +326,11 @@
       <div class="phead">
         <a href="${profileHref}"><img src="${p.author_avatar || ''}" alt=""></a>
         <div class="who">
-          <a href="${profileHref}" class="name">${p.author_username || 'Jogador RCN'}${p.is_pinned ? ' 📌' : ''}</a>
+          <a href="${profileHref}" class="name">${p.author_username || 'Jogador RCN'}</a>
           ${p.club ? `<div class="club">${p.club}</div>` : ''}
         </div>
         <div class="time">${timeAgo(p.created_at)}</div>
         ${isOwner ? `
-          <button class="pin-btn" data-id="${p.id}" title="${p.is_pinned ? 'Desafixar' : 'Afixar no perfil'}" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;margin-left:8px;">${p.is_pinned ? '📌' : '📍'}</button>
           <button class="delete-btn" data-id="${p.id}" title="Apagar post" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;margin-left:4px;">🗑️</button>
         ` : ''}
       </div>
@@ -370,25 +369,6 @@
         btn.disabled = false;
       }
     });
-
-    const pinBtn = el.querySelector('.pin-btn');
-    if(pinBtn){
-      pinBtn.addEventListener('click', async () => {
-        pinBtn.disabled = true;
-        try{
-          const res = await fetch(`/api/posts/${p.id}/pin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: user.id })
-          });
-          if(!res.ok) throw new Error('Falha ao afixar');
-          loadFeed();
-        }catch(err){
-          alert('Não foi possível afixar o post.');
-          pinBtn.disabled = false;
-        }
-      });
-    }
 
     const deleteBtn = el.querySelector('.delete-btn');
     if(deleteBtn){
@@ -473,6 +453,8 @@
     }
     commentBtn.addEventListener('click', submitComment);
     commentInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') submitComment(); });
+
+    fetch(`/api/posts/${p.id}/view`, { method: 'POST' }).catch(() => {});
 
     return el;
   }

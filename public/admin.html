@@ -634,20 +634,27 @@
     if(playersCache.length === 0) await loadPlayers();
     let events;
     try{
-      events = await adminFetch(`/api/admin/matches/${m.id}/events`);
+      events = await adminFetch(`/api/admin/matches/${m.id}/events`); // já vem com as assistências a seguir ao respetivo golo
     }catch(err){
       panel.innerHTML = `<p style="color:var(--red); font-size:12px;">${err.message}</p>`;
       return;
     }
 
-    const list = events.map(ev => `
-      <div style="display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--line); font-size:12.5px;">
+    const goals = events.filter(ev => ev.event_type === 'goal');
+
+    const list = events.map(ev => {
+      const isAssist = ev.event_type === 'assist';
+      return `
+      <div style="display:flex; align-items:center; gap:10px; padding:6px 0 6px ${isAssist ? '30px' : '0'}; border-bottom:1px solid var(--line); font-size:12.5px;">
         <span style="min-width:36px; color:var(--muted);">${ev.minute != null ? ev.minute + "'" : '—'}</span>
-        <span style="min-width:130px;">${eventTypeLabels[ev.event_type] || ev.event_type}</span>
+        <span style="min-width:130px;">${isAssist ? '↳ ' : ''}${eventTypeLabels[ev.event_type] || ev.event_type}</span>
         <span style="flex:1;">${ev.player_name || '—'} <span style="color:var(--muted);">(${clubName(ev.club_id)})</span></span>
         <button class="del-event-btn" data-id="${ev.id}" style="background:none;border:none;color:var(--muted);cursor:pointer;">Apagar</button>
       </div>
-    `).join('') || '<p style="color:var(--muted); font-size:12px;">Sem acontecimentos registados.</p>';
+    `;
+    }).join('') || '<p style="color:var(--muted); font-size:12px;">Sem acontecimentos registados.</p>';
+
+    const goalOptions = goals.map(g => `<option value="${g.id}">${g.minute != null ? g.minute + "' — " : ''}${g.player_name || 'Golo'} (${clubName(g.club_id)})</option>`).join('');
 
     panel.innerHTML = `
       ${list}
@@ -661,9 +668,13 @@
         <select class="ev-type">
           <option value="goal">Golo</option>
           <option value="own_goal">Autogolo</option>
-          <option value="assist">Assistência</option>
+          <option value="assist" ${goals.length === 0 ? 'disabled' : ''}>Assistência${goals.length === 0 ? ' (precisa de um golo)' : ''}</option>
           <option value="yellow">Cartão amarelo</option>
           <option value="red">Cartão vermelho</option>
+        </select>
+        <select class="ev-goal" style="display:none;">
+          <option value="">Golo a assistir…</option>
+          ${goalOptions}
         </select>
         <input class="ev-minute" type="number" placeholder="Min." style="width:60px;">
         <button class="add-event-btn">Adicionar</button>
@@ -672,9 +683,15 @@
 
     const clubSelect = panel.querySelector('.ev-club');
     const playerSelect = panel.querySelector('.ev-player');
+    const typeSelect = panel.querySelector('.ev-type');
+    const goalSelect = panel.querySelector('.ev-goal');
     const fillPlayers = () => { playerSelect.innerHTML = '<option value="">Jogador (opcional)</option>' + playerOptionsForClub(clubSelect.value); };
     fillPlayers();
     clubSelect.addEventListener('change', fillPlayers);
+
+    typeSelect.addEventListener('change', () => {
+      goalSelect.style.display = typeSelect.value === 'assist' ? 'inline-block' : 'none';
+    });
 
     panel.querySelectorAll('.del-event-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -689,6 +706,11 @@
       const playerId = playerSelect.value;
       const playerObj = playersCache.find(p => p.id === playerId);
       const manualName = panel.querySelector('.ev-player-name').value.trim();
+      const eventType = typeSelect.value;
+      if(eventType === 'assist' && !goalSelect.value){
+        alert('Escolhe a que golo pertence esta assistência.');
+        return;
+      }
       try{
         await adminFetch(`/api/admin/matches/${m.id}/events`, {
           method: 'POST',
@@ -696,8 +718,9 @@
             club_id: clubSelect.value,
             player_id: playerId || null,
             player_name: manualName || (playerObj ? playerObj.name : null),
-            event_type: panel.querySelector('.ev-type').value,
-            minute: panel.querySelector('.ev-minute').value
+            event_type: eventType,
+            minute: panel.querySelector('.ev-minute').value,
+            parent_event_id: eventType === 'assist' ? goalSelect.value : null
           })
         });
         renderMatchEvents(m, panel);
