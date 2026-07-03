@@ -282,4 +282,54 @@ router.delete('/matches/:id', async (req, res) => {
   return res.status(204).send();
 });
 
+// GET /api/admin/matches/:id/events
+router.get('/matches/:id/events', async (req, res) => {
+  const { id } = req.params;
+  const { data, error } = await supabase
+    .from('match_events')
+    .select('*')
+    .eq('match_id', id)
+    .order('minute', { ascending: true, nullsFirst: true });
+  if (error) return res.status(500).json({ error: 'Não foi possível carregar os acontecimentos.' });
+  return res.json(data);
+});
+
+// POST /api/admin/matches/:id/events -> adiciona um acontecimento (golo, cartão, etc.)
+// body: { club_id, player_id, player_name, event_type, minute, note }
+router.post('/matches/:id/events', async (req, res) => {
+  const { id } = req.params;
+  const { club_id, player_id, player_name, event_type, minute, note } = req.body || {};
+
+  if (!club_id) {
+    return res.status(400).json({ error: 'Falta escolher o clube.' });
+  }
+  const allowedTypes = ['goal', 'own_goal', 'assist', 'yellow', 'red'];
+  const safeType = allowedTypes.includes(event_type) ? event_type : 'goal';
+
+  const { data, error } = await supabase
+    .from('match_events')
+    .insert([{
+      match_id: id,
+      club_id,
+      player_id: player_id || null,
+      player_name: player_name || null,
+      event_type: safeType,
+      minute: minute === undefined || minute === '' ? null : Number(minute),
+      note: note || null
+    }])
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: 'Não foi possível adicionar o acontecimento.' });
+  return res.status(201).json(data);
+});
+
+// DELETE /api/admin/match-events/:eventId
+router.delete('/match-events/:eventId', async (req, res) => {
+  const { eventId } = req.params;
+  const { error } = await supabase.from('match_events').delete().eq('id', eventId);
+  if (error) return res.status(500).json({ error: 'Não foi possível remover o acontecimento.' });
+  return res.status(204).send();
+});
+
 module.exports = router;

@@ -31,6 +31,27 @@ router.get('/matches', async (req, res) => {
   return res.json(data);
 });
 
+// GET /api/matches/:id -> detalhe de um jogo (clubes + acontecimentos: quem marcou, cartões, etc.)
+router.get('/matches/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const { data: match, error } = await supabase
+    .from('matches')
+    .select('*, home_club:home_club_id(name), away_club:away_club_id(name)')
+    .eq('id', id)
+    .single();
+
+  if (error || !match) return res.status(404).json({ error: 'Jogo não encontrado.' });
+
+  const { data: events } = await supabase
+    .from('match_events')
+    .select('*, club:club_id(name), player:player_id(name)')
+    .eq('match_id', id)
+    .order('minute', { ascending: true, nullsFirst: true });
+
+  return res.json({ ...match, events: events || [] });
+});
+
 /* ---------------- comentários ---------------- */
 
 // GET /api/posts/:id/comments
