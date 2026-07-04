@@ -126,14 +126,14 @@
   .like-btn svg{ width:20px; height:20px; }
   .like-btn.liked{ color:var(--red); }
   .like-btn.liked svg{ fill:var(--red); }
-  .pcaption{ padding:6px 16px 16px; font-size:13px; line-height:1.5; }
+  .pcaption{ padding:6px 16px 16px; font-size:13px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word; }
   .pcaption b{ font-weight:600; margin-right:6px; }
 
   .comments-section{ border-top:1px solid var(--line); padding:10px 16px 16px; }
   .comments-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
   .comment-row{ display:flex; gap:8px; align-items:flex-start; }
   .comment-row img{ width:24px; height:24px; border-radius:50%; object-fit:cover; flex-shrink:0; margin-top:1px; }
-  .comment-row .bubble{ font-size:12.5px; line-height:1.5; }
+  .comment-row .bubble{ font-size:12.5px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word; }
   .comment-row .bubble b{ font-weight:600; margin-right:6px; }
   .comment-row .ctime{ font-size:10px; color:var(--muted); margin-left:6px; }
   .comment-form{ display:flex; gap:8px; margin-top:4px; }
@@ -283,6 +283,15 @@
     })
     .catch(() => {});
 
+  function escapeHtml(str){
+    return (str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function timeAgo(dateStr){
     const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
     if(diff < 60) return 'agora mesmo';
@@ -341,7 +350,7 @@
         </button>
         <button class="toggle-comments" data-id="${p.id}">Comentários</button>
       </div>
-      ${p.caption ? `<div class="pcaption"><b>${p.author_username || 'Jogador RCN'}</b>${p.caption}</div>` : ''}
+      ${p.caption ? `<div class="pcaption"><b>${p.author_username || 'Jogador RCN'}</b>${escapeHtml(p.caption)}</div>` : ''}
       <div class="comments-section" data-post-id="${p.id}" style="display:none;">
         <div class="comments-list"><span style="font-size:12px; color:var(--muted);">A carregar…</span></div>
         <div class="comment-form">
@@ -410,7 +419,7 @@
           row.className = 'comment-row';
           row.innerHTML = `
             <img src="${c.author_avatar || ''}" alt="">
-            <div class="bubble"><b>${c.author_username || 'Jogador RCN'}</b>${c.content}<span class="ctime">${timeAgo(c.created_at)}</span></div>
+            <div class="bubble"><b>${c.author_username || 'Jogador RCN'}</b>${escapeHtml(c.content)}<span class="ctime">${timeAgo(c.created_at)}</span></div>
           `;
           commentsList.appendChild(row);
         });

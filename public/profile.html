@@ -100,7 +100,7 @@
   .post .phead{ display:flex; align-items:center; gap:10px; padding:13px 16px; border-bottom:1px solid var(--line); }
   .post .phead .name{ font-size:13px; font-weight:600; flex:1; }
   .post .pimg{ width:100%; aspect-ratio:1/1; object-fit:cover; display:block; background:#0a0c10; }
-  .pcaption{ padding:10px 16px 16px; font-size:13px; line-height:1.5; }
+  .pcaption{ padding:10px 16px 16px; font-size:13px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word; }
   .pin-tag{ font-size:10.5px; color:var(--gold); margin-left:6px; }
   .post-actions{ display:flex; gap:10px; padding:10px 16px; }
   .post-actions button{
@@ -199,6 +199,15 @@
     if(match) document.getElementById('brandImg').src = match[1];
   }).catch(()=>{});
 
+  function escapeHtml(str){
+    return (str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function timeAgo(dateStr){
     const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
     if(diff < 60) return 'agora mesmo';
@@ -281,7 +290,7 @@
         <div class="name">${timeAgo(p.created_at)}${p.is_pinned ? '<span class="pin-tag">📌 Afixado</span>' : ''}</div>
       </div>
       ${mediaEl}
-      ${p.caption ? `<div class="pcaption">${p.caption}</div>` : ''}
+      ${p.caption ? `<div class="pcaption">${escapeHtml(p.caption)}</div>` : ''}
       ${isOwnProfile ? `
         <div class="post-actions">
           <button class="pin-toggle" data-id="${p.id}">${p.is_pinned ? 'Desafixar' : 'Afixar no perfil'}</button>
