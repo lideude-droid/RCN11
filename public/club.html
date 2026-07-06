@@ -46,6 +46,23 @@
   .logout-link{ font-size:10.5px; color:var(--muted); border-bottom:1px solid var(--line); margin-left:14px; cursor:pointer; }
   .logout-link:hover{ color:var(--red); }
 
+  .social-menu{ position:relative; margin-left:14px; }
+  .social-toggle{
+    background:none; border:1px solid var(--line); color:var(--muted);
+    font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;
+  }
+  .social-toggle:hover{ color:var(--text); border-color:var(--gold); }
+  .social-dropdown{
+    position:absolute; top:calc(100% + 8px); right:0; background:var(--ink-2);
+    border:1px solid var(--line); min-width:170px; display:none; flex-direction:column; z-index:30;
+    box-shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+  .social-dropdown.open{ display:flex; }
+  .social-dropdown a{ padding:11px 14px; font-size:12.5px; color:var(--text); border-bottom:1px solid var(--line); }
+  .social-dropdown a:last-child{ border-bottom:none; }
+  .social-dropdown a:hover{ background:rgba(255,255,255,.06); color:var(--gold); }
+
   .hero{
     padding:36px 32px 24px; border-bottom:1px solid var(--line);
     background:linear-gradient(180deg, rgba(29,92,65,.10), transparent 70%);
@@ -151,13 +168,23 @@
     </a>
   </div>
   <nav>
-    <a href="dashboard.html">Liga</a>
-    <a href="feed.html">Feed</a>
+    <a href="dashboard.html#classificacao">Classificação</a>
+    <a href="dashboard.html#clubes">Clubes</a>
+    <a href="dashboard.html#marcadores">Marcadores</a>
+    <a href="matches.html">Jogos</a>
+    <a href="club.html" class="active">Meu Clube</a>
   </nav>
   <div style="display:flex;align-items:center;">
     <div class="user-chip">
       <div class="name" id="userName">—</div>
       <img id="userAvatar" src="" alt="">
+    </div>
+    <div class="social-menu">
+      <button class="social-toggle" id="socialToggle" type="button">Comunidade ▾</button>
+      <div class="social-dropdown" id="socialDropdown">
+        <a href="feed.html">Feed</a>
+        <a href="profile.html" id="myAccountLink">A minha conta</a>
+      </div>
     </div>
     <span class="logout-link" id="logoutLink">Sair</span>
   </div>
@@ -248,11 +275,21 @@
   if(user){
     document.getElementById('userAvatar').src = user.avatarUrl || '';
     document.getElementById('userName').textContent = user.username || '';
+    document.getElementById('myAccountLink').href = `profile.html?id=${encodeURIComponent(user.id)}`;
   }
   document.getElementById('logoutLink').addEventListener('click', () => {
     localStorage.removeItem('rcn_user');
     window.location.href = 'login.html';
   });
+  const socialToggle = document.getElementById('socialToggle');
+  const socialDropdown = document.getElementById('socialDropdown');
+  if(socialToggle){
+    socialToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      socialDropdown.classList.toggle('open');
+    });
+    document.addEventListener('click', () => socialDropdown.classList.remove('open'));
+  }
 
   // verificação de dono de clube
   if(!user.isOwner){
